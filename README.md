@@ -1,10 +1,13 @@
 # Disease Detector - Histopathological Image Classification
 
-A deep learning application that uses CNN to classify lung and colon cancer histopathological images, with a Gradio frontend and Twilio SMS notifications.
+Aplicacion universitaria que integra:
+- Prediccion de enfermedad con CNN (MobileNetV2 + transfer learning)
+- Visualizacion de resultados en frontend Gradio
+- Notificacion por SMS usando Twilio
 
 ## Dataset
 
-The dataset contains 25,000 images across 5 classes (5,000 each):
+El dataset tiene 25,000 imagenes balanceadas en 5 clases (5,000 por clase):
 
 | Class | Directory | Description |
 |-------|-----------|-------------|
@@ -14,97 +17,83 @@ The dataset contains 25,000 images across 5 classes (5,000 each):
 | Colon Benign | `colon_image_sets/colon_n/` | Healthy colon tissue |
 | Colon Adenocarcinoma | `colon_image_sets/colon_aca/` | Colon adenocarcinoma |
 
-## Setup
+## Instalacion
 
-### 1. Install dependencies
+1. Instala dependencias:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Configure Twilio
-
-1. Sign up at [twilio.com](https://www.twilio.com)
-2. Get your Account SID, Auth Token, and phone number from the console
-3. Copy `.env.example` to `.env` and fill in your credentials:
+2. Crea variables de entorno:
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env`:
-```
-TWILIO_ACCOUNT_SID=your_account_sid_here
-TWILIO_AUTH_TOKEN=your_auth_token_here
+3. Completa `.env` con tus credenciales:
+
+```env
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_AUTH_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 TWILIO_PHONE_NUMBER=+15017122661
-DESTINATION_PHONE_NUMBER=+15558675309
+DESTINATION_PHONE_NUMBER=+573001234567
+TWILIO_MESSAGING_SERVICE_SID=
 ```
 
-### 3. Train the Model
+Notas Twilio:
+- Usa formato E.164 (`+` y codigo pais).
+- En cuenta trial solo puedes enviar a numeros verificados en Twilio Console.
+- Puedes usar `TWILIO_PHONE_NUMBER` o `TWILIO_MESSAGING_SERVICE_SID` como remitente.
+
+## Entrenamiento del Modelo
 
 ```bash
 python -m model.train
 ```
 
-This will:
-- Load all 25,000 images from both datasets
-- **Phase 1**: Train classifier head with MobileNetV2 backbone (frozen)
-- **Phase 2**: Fine-tune last 30 layers of MobileNetV2
-- Save the best model to `model/cnn_model.h5`
+Pipeline actual:
+- Fase 1: entrenamiento de la cabeza clasificadora
+- Fase 2: fine-tuning conservador del backbone
+- Regularizacion con AdamW, label smoothing y L2
+- Evaluacion por clase al finalizar
 
-## Model Architecture
+Artefactos por corrida en `model/training_runs/<run_id>/`:
+- `training_report.txt`
+- `phase_1_metrics.csv` y `phase_2_metrics.csv`
+- `training_curves.png`
+- `classification_report.json` y `classification_report.txt`
+- `confusion_matrix.csv` y `confusion_matrix.png`
+- `error_summary.txt`
+- `run_config.json`
 
-The CNN uses **transfer learning with MobileNetV2** (pre-trained on ImageNet), which is the standard best practice for image classification:
+## Frontend Gradio
 
-- **Backbone**: MobileNetV2 (frozen initially, then fine-tuned)
-- **Data Augmentation**: Random flip, rotation, zoom, translation
-- **Classifier Head**: GlobalAveragePooling → Dropout → Dense(256) → BatchNorm → Dropout → Dense(5, softmax)
-- **Training**: Two-phase approach (head training + fine-tuning)
-- **Optimizations**: Adam optimizer, ReduceLROnPlateau, EarlyStopping, ModelCheckpoint
-
-## Model Architecture
-
-The CNN uses **transfer learning with MobileNetV2** (pre-trained on ImageNet), which is the standard best practice for image classification:
-
-- **Backbone**: MobileNetV2 (frozen initially, then fine-tuned)
-- **Data Augmentation**: Random flip, rotation, zoom, translation
-- **Classifier Head**: GlobalAveragePooling → Dropout → Dense(256) → BatchNorm → Dropout → Dense(5, softmax)
-- **Training**: Two-phase approach (head training + fine-tuning)
-- **Optimizations**: Adam optimizer, ReduceLROnPlateau, EarlyStopping, ModelCheckpoint
-
-### 4. Run the Gradio App
+Ejecuta:
 
 ```bash
 python app.py
 ```
 
-Open the URL shown in the terminal (default: `http://localhost:7860`)
+La UI incluye 3 pestañas:
+- Diagnostico: subida de imagen, prediccion y envio opcional por SMS
+- Analitica de entrenamiento: dashboard de corridas guardadas con matriz de confusion
+- Twilio: estado de configuracion y envio de SMS de prueba
 
-### 5. Run the FastAPI Backend (Optional)
+## Backend FastAPI (Opcional)
 
 ```bash
 uvicorn api.main:app --reload
 ```
 
-API endpoints:
-- `POST /predict` - Upload image, get prediction
-- `POST /predict-and-notify` - Upload image, get prediction, send SMS
+Endpoints:
+- `POST /predict`: prediccion de imagen
+- `POST /predict-and-notify`: prediccion + notificacion SMS
 
-Interactive docs at: `http://localhost:8000/docs`
+Docs interactivas: `http://localhost:8000/docs`
 
-## Project Structure
+## Referencias usadas para Twilio
 
-```
-├── model/
-│   ├── model.py          # CNN architecture
-│   ├── train.py          # Training script
-│   └── cnn_model.h5      # Trained model (after training)
-├── api/
-│   ├── main.py           # FastAPI server
-│   └── twilio_service.py # SMS notification service
-├── app.py                # Gradio frontend
-├── requirements.txt
-├── .env.example
-└── lung_image_sets/      # Dataset
-└── colon_image_sets/     # Dataset
-```
+- Twilio Python helper (`messages.create`)
+- Twilio Messaging Quickstart (variables de entorno y formato de numeros)
+- Guias practicas de Twilio para FastAPI/Python

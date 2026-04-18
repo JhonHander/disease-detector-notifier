@@ -1,5 +1,6 @@
 import tensorflow as tf
 from tensorflow import keras
+from tensorflow.keras import regularizers
 
 
 def create_cnn_model(input_shape=(224, 224, 3), num_classes=5, trainable=False):
@@ -21,14 +22,23 @@ def create_cnn_model(input_shape=(224, 224, 3), num_classes=5, trainable=False):
         [
             keras.layers.Input(shape=input_shape),
             data_augmentation,
-            keras.layers.Lambda(keras.applications.mobilenet_v2.preprocess_input),
+            # MobileNetV2 expects inputs in [-1, 1].
+            keras.layers.Rescaling(scale=1.0 / 127.5, offset=-1.0),
             base_model,
             keras.layers.GlobalAveragePooling2D(),
             keras.layers.Dropout(0.3),
-            keras.layers.Dense(256, activation="relu"),
+            keras.layers.Dense(
+                256,
+                activation="relu",
+                kernel_regularizer=regularizers.l2(1e-4),
+            ),
             keras.layers.BatchNormalization(),
             keras.layers.Dropout(0.3),
-            keras.layers.Dense(num_classes, activation="softmax"),
+            keras.layers.Dense(
+                num_classes,
+                activation="softmax",
+                kernel_regularizer=regularizers.l2(1e-4),
+            ),
         ]
     )
     return model

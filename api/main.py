@@ -1,7 +1,8 @@
 import os
+from io import BytesIO
 import numpy as np
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from tensorflow import keras
 from PIL import Image
@@ -19,7 +20,7 @@ CLASS_LABELS = {
     "colon_n": "Colon Benign Tissue",
     "colon_aca": "Colon Adenocarcinoma",
 }
-IMG_SIZE = (224, 224)
+IMG_SIZE = (160, 160)
 
 ml_models = {}
 
@@ -27,7 +28,13 @@ ml_models = {}
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("Loading CNN model...")
-    ml_models["cnn"] = keras.models.load_model(MODEL_PATH)
+    ml_models["cnn"] = keras.models.load_model(
+        MODEL_PATH,
+        compile=False,
+        custom_objects={
+            "preprocess_input": keras.applications.mobilenet_v2.preprocess_input,
+        },
+    )
     print("Model loaded successfully")
     yield
     ml_models.clear()
@@ -45,10 +52,9 @@ app.add_middleware(
 
 
 def preprocess_image(image_bytes: bytes) -> np.ndarray:
-    image = Image.open(image_bytes).convert("RGB")
+    image = Image.open(BytesIO(image_bytes)).convert("RGB")
     image = image.resize(IMG_SIZE)
-    img_array = np.array(image)
-    img_array = keras.applications.mobilenet_v2.preprocess_input(img_array)
+    img_array = np.array(image, dtype=np.float32)
     return np.expand_dims(img_array, axis=0)
 
 
@@ -76,7 +82,7 @@ async def predict(file: UploadFile = File(...)):
 
 
 @app.post("/predict-and-notify")
-async def predict_and_notify(file: UploadFile = File(...), phone: str = None):
+async def predict_and_notify(file: UploadFile = File(...), phone: str = Form(None)):
     image_bytes = await file.read()
     preprocessed = preprocess_image(image_bytes)
 
