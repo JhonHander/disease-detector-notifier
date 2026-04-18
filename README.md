@@ -36,7 +36,35 @@ El modelo se entrena con transfer learning sobre **MobileNetV2** y guarda artefa
 
 ## Dataset
 
-El dataset tiene **25,000 imagenes** balanceadas (**5,000 por clase**):
+El dataset tiene **25,000 imagenes** balanceadas (**5,000 por clase**). **No está incluido en este repositorio** debido a su tamaño.
+
+### Descarga e Instalacion
+
+1. Descarga el dataset desde Kaggle:
+   - **Enlace**: https://www.kaggle.com/datasets/andrewmvd/lung-and-colon-cancer-histopathological-images
+   - Requiere cuenta de Kaggle (gratuita).
+
+2. Extrae los archivos en la raiz del proyecto:
+
+   ```bash
+   unzip lung-and-colon-cancer-histopathological-images.zip
+   ```
+
+3. La estructura esperada es:
+
+   ```text
+   disease-detector-notifier/
+   ├── lung_image_sets/
+   │   ├── lung_n/           # imagenes PNG
+   │   ├── lung_aca/         # imagenes PNG
+   │   └── lung_scc/         # imagenes PNG
+   ├── colon_image_sets/
+   │   ├── colon_n/          # imagenes PNG
+   │   └── colon_aca/        # imagenes PNG
+   └── ...
+   ```
+
+### Descripcion de Clases
 
 | Clase | Directorio | Descripcion |
 |---|---|---|
